@@ -56,7 +56,7 @@ def get_ai_data(target, sentence):
     "pinyin": The pinyin for the target word using standard tone marks.
     "definition": A very concise but still clear definition of the target word, written in mandarin suitable for a C1 learner. Do not use the target word's component characters in the definition itself.
     *SPECIAL RULE*: If the word is a specialized technical term (like '空集'), prefix the definition with its domain (e.g., '数学用语。') and include the English equivalent in parentheses at the end. Do NOT do this for common words.
-    "explanation": A micro-explanation of the context, also in Mandarin
+    "explanation": Further explanation, also in Mandarin, anything relevant to elucidating the word in contetx
     """     
     
     client = OpenAI(api_key=OPENAI_API_KEY)
