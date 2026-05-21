@@ -46,11 +46,16 @@ def get_ai_data(target, sentence):
             "definition": f"[MOCK] 这是一个测试定义 (Definition for {target}).",
             "explanation": f"[MOCK] 这是一个测试解释 (Explanation of {target} in context)."
         }
-        
+
     prompt = f"""
-    You are an expert Chinese linguistics assistant. 
+    You are an ultra-minimalist Chinese flashcard generator for an advanced C1 learner.
     Target word: {target}
     Context sentence: {sentence}
+    
+    Return a JSON object with exactly two keys:
+    "definition": A very concise but still clear definition of the target word. Do not use the target word's component characters in the definition itself.
+    "explanation": A micro-explanation of the context 
+    """     
     
     Return a JSON object with exactly two keys:
     "definition": A concise, natural monolingual Chinese definition suitable for a C1 learner.
