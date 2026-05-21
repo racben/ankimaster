@@ -20,7 +20,7 @@ DRY_RUN = True
 
 # Your Anki Setup
 ANKI_DECK = "Chinese"
-ANKI_MODEL = "Chinese Basic"  # Change to "Basic" if your Note Type is literally named Basic
+ANKI_MODEL = "Chinese Basic" 
 # =================================================
 
 def anki_invoke(action, **params):
@@ -34,40 +34,48 @@ def anki_invoke(action, **params):
         return response.get("result")
     except Exception as e:
         print(f"❌ Failed to connect to Anki: {e}")
-        print("Is Anki open and AnkiConnect installed?")
         sys.exit(1)
 
-def get_ai_data(target, sentence):
-    """Call OpenAI to dynamically classify and generate the card back"""
-    print(f"🧠 Asking AI to evaluate: {target}")
+def get_ai_data(raw_input):
+    """Call OpenAI to extract the target and generate the card back"""
+    print(f"🧠 Asking AI to process: {raw_input}")
     
     if DRY_RUN:
         return {
+            "target": "测试词",
+            "context": raw_input,
             "front_hint": "[测试]",
-            "back": f"「{target}」这是一个测试卡片。\n\n英文: 'test card'"
+            "back": f"「测试词」的解释。<br><br>英文: 'test word'"
         }
         
     prompt = f"""
     You are an adaptive Chinese-English dictionary for an advanced C1 Mandarin learner (native English speaker).
-    Target word: {target}
-    Context sentence (if any): {sentence}
+    User Input: {raw_input}
     
+    TASK 1: EXTRACTION
+    Identify the primary "target word" the user wants to learn from this input. 
+    - It might be explicitly quoted (e.g., 「注销」, "节选信息").
+    - It might just be the most difficult/salient C1-level word in a raw sentence (e.g., 熔断, 婆娑).
+    - If the input is just a single word/phrase (e.g., "空集", "模式识别"), that is the target word.
+    
+    TASK 2: CARD GENERATION
     Analyze the target word and generate the back of a flashcard dynamically. Follow these conditional rules:
-    
     1. TECHNICAL/MEDICAL/LOANWORDS (e.g., 模式识别, 胎盘, 空集): 
-       Output the English equivalent. If it's a specific domain, add a tag like "数学用语。" Keep Chinese explanations extremely minimal or omit them entirely.
+       Output the English equivalent. If it's a specific domain, add a tag like "数学用语。" Keep Chinese minimal.
     2. NUANCE & SYNONYMS (e.g., 注销, 节选): 
        Provide a concise Chinese definition. Then, briefly explain the difference between this word and a common near-synonym (e.g., "与「取消」的区别是...").
     3. LITERARY/RARE WORDS (e.g., 婆娑): 
-       Include pinyin with tone marks. Provide the definition and a short usage note in English or Chinese (e.g., "used for shadows/dancing").
+       Include pinyin with tone marks. Provide the definition and a short usage note.
     4. POLYSEMY/CONTEXT-DEPENDENT (e.g., 注释, 清唱): 
        Explain the specific meaning in this context (e.g., "code comment" vs "footnote"). Use English if it's faster.
     5. PINYIN RULE: 
        Do NOT output pinyin unless the word falls under Rule 3 (rare/literary) or is easily mispronounced.
        
-    Return a JSON object with exactly two keys:
+    Return a JSON object with EXACTLY four keys:
+    "target": The extracted target word (no quotes/brackets).
+    "context": The full context sentence. Leave completely EMPTY ("") if the user input was just a single isolated word.
     "front_hint": Optional. A short tag to put on the front of the card (e.g., "[数学]" or "[Context: logs]"). Leave empty if not needed.
-    "back": The fully formatted text for the back of the card. Use HTML <br><br> tags for line breaks instead of \n. Use standard formatting (e.g. 「」).
+    "back": The fully formatted text for the back of the card. Use HTML <br><br> tags for line breaks instead of \n.
     """
     
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -78,13 +86,10 @@ def get_ai_data(target, sentence):
             response_format={ "type": "json_object" },
             messages=[{"role": "user", "content": prompt}]
         )
-        
-        content = response.choices.message.content
-        return json.loads(content)
-        
+        return json.loads(response.choices.message.content)
     except Exception as e:
         print(f"❌ AI Text Error: {e}")
-        return {"front_hint": "", "back": "Error generating card data."}
+        return {"target": "Error", "context": "", "front_hint": "", "back": "Error"}
 
 def main():
     if not DRY_RUN and OPENAI_API_KEY == "your_api_key_here":
@@ -95,36 +100,29 @@ def main():
         line = line.strip()
         if not line:
             continue
-            
-        try:
-            target, sentence = line.split('\t')
-        except ValueError:
-            print(f"⚠️ Skipping malformed line: {line}")
-            continue
 
         print(f"\n" + "="*40)
-        print(f"🎯 Target: {target}")
-        print(f"📝 Context: {sentence}")
-        print("="*40)
         
-        # 1. Get Text Data
-        ai_data = get_ai_data(target, sentence)
+        # Pass the raw string directly to the AI
+        ai_data = get_ai_data(line)
         
-        print("\n✨ AI Generated Content:")
+        print("✨ AI Generated Content:")
         print(json.dumps(ai_data, indent=2, ensure_ascii=False))
         print("-" * 40)
         
-        # 2. Build the exact Front and Back field strings
+        target = ai_data.get("target", "").strip()
+        context = ai_data.get("context", "").strip()
         hint = ai_data.get("front_hint", "").strip()
-        front_text = f"{target} {hint}".strip()
-        
-        # The AI now outputs <br> directly, so no string replacement is needed
         formatted_back = ai_data.get("back", "")
         
-        # Assemble the full Back side
-        full_back = f"<i>{sentence}</i><br><br><hr><br>{formatted_back}"
+        front_text = f"{target} {hint}".strip()
         
-        # 3. Build the Anki Card payload mapped strictly to "Front" and "Back"
+        # Only add the context string to the back if the AI determined one existed
+        if context:
+            full_back = f"<i>{context}</i><br><br><hr><br>{formatted_back}"
+        else:
+            full_back = formatted_back
+            
         note = {
             "deckName": ANKI_DECK,
             "modelName": ANKI_MODEL,
@@ -132,23 +130,21 @@ def main():
                 "Front": front_text,
                 "Back": full_back
             },
-            "options": {
-                "allowDuplicate": False
-            },
+            "options": {"allowDuplicate": False},
             "tags": ["ai"]
         }
 
-        # 4. Push to Anki
         if DRY_RUN:
-            print("🛑 [DRY RUN] Skipping Anki injection. Here is the final payload:")
-            print(json.dumps(note["fields"], indent=2, ensure_ascii=False))
+            print("🛑 [DRY RUN] Final Anki fields preview:")
+            print(f"Front: {note['fields']['Front']}")
+            print(f"Back:  {note['fields']['Back']}\n")
             continue
             
-        print(f"📥 Pushing to Anki...")
-        anki_id = anki_invoke("addNote", note=note)
+        # print(f"📥 Pushing to Anki...")
+        # anki_id = anki_invoke("addNote", note=note)
         
-        if anki_id:
-            print(f"✅ Card created successfully! (ID: {anki_id})\n")
+        # if anki_id:
+        #     print(f"✅ Card created successfully! (ID: {anki_id})\n")
 
 if __name__ == "__main__":
     main()
