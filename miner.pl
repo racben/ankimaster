@@ -12,17 +12,17 @@ while (my $line = <STDIN>) {
     my ($target, $anchor) = split(/\s+/, $line);
     next unless $target && $anchor;
 
-    my $cmd = "rg -uu -N '$target' '$corpus' | rg -m 1 '$anchor'";
+    # Added --no-filename to force ripgrep to drop the file path
+    my $cmd = "rg --no-filename -uu -N '$target' '$corpus' | rg -m 1 '$anchor'";
     my $result = `$cmd`;
     
     if ($result) {
-        # 1. Remove the trailing newline
         chomp($result);
         
-        # 2. Strip bracketed ID tags and trailing spaces at the start of the line
+        # Strip the bracketed ID tags (e.g. [146782006]) and leading spaces
         $result =~ s/^\[.*?\]\s*//;
         
-        # 3. Output as strict TSV: Target \t Clean_Sentence
+        # Output as strict TSV: Target \t Clean_Sentence
         print "$target\t$result\n";
     }
 }
