@@ -8,7 +8,6 @@
 
 import sys
 import json
-import base64
 import requests
 import os
 from openai import OpenAI
@@ -75,29 +74,6 @@ def get_ai_data(target, sentence):
         print(f"AI Text Error: {e}")
         return {"definition": "Error generating definition", "explanation": "Error"}
 
-def get_audio_base64(target):
-    """Call OpenAI TTS and return the audio as a base64 string"""
-    print(f"🎙️ Generating native audio for: {target}")
-    
-    if DRY_RUN:
-        print("   [DRY RUN] Skipping OpenAI Audio API. Returning mock audio string.")
-        return "mock_base64_audio_string_would_go_here"
-        
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    
-    try:
-        response = client.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=target
-        )
-        
-        return base64.b64encode(response.content).decode('utf-8')
-        
-    except Exception as e:
-        print(f"AI Audio Error: {e}")
-        return None
-
 def main():
     if not DRY_RUN and OPENAI_API_KEY == "your_api_key_here":
         print("⚠️ Please set your OPENAI_API_KEY in the script or environment.")
@@ -116,11 +92,10 @@ def main():
 
         print(f"\n--- Processing: {target} ---")
         
+        # 1. Get Text Data
         ai_data = get_ai_data(target, sentence)
-        audio_b64 = get_audio_base64(target)
         
-        audio_filename = f"openai_tts_{target}.mp3"
-        
+        # 2. Build the Anki Card payload
         note = {
             "deckName": ANKI_DECK,
             "modelName": ANKI_MODEL,
@@ -129,7 +104,7 @@ def main():
                 "Sentence": sentence,
                 "Definition": ai_data.get("definition", ""),
                 "Explanation": ai_data.get("explanation", ""),
-                "Audio": "" 
+                "Audio": ""  # Kept blank to match your Anki Note Type structure
             },
             "options": {
                 "allowDuplicate": False
@@ -137,13 +112,7 @@ def main():
             "tags": ["auto-mined"]
         }
 
-        if audio_b64 and not DRY_RUN:
-            note["audio"] = [{
-                "data": audio_b64,
-                "filename": audio_filename,
-                "fields": ["Audio"]
-            }]
-
+        # 3. Push to Anki
         print(f"📥 Pushing to Anki...")
         
         if DRY_RUN:
