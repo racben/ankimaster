@@ -48,34 +48,192 @@ def get_ai_data(raw_input):
             "back": f"「测试词」的解释。<br><br>英文: 'test word'"
         }
         
-    prompt = f"""
-    You are an adaptive Chinese-English dictionary for an advanced C1 Mandarin learner (native English speaker).
-    User Input: {raw_input}
-    
-    TASK 1: EXTRACTION
-    Identify the primary "target word" the user wants to learn from this input. 
-    - It might be explicitly quoted (e.g., 「注销」, "节选信息").
-    - It might just be the most difficult/salient C1-level word in a raw sentence (e.g., 熔断, 婆娑).
-    - If the input is just a single word/phrase (e.g., "空集", "模式识别"), that is the target word.
-    
-    TASK 2: CARD GENERATION
-    Analyze the target word and generate the back of a flashcard dynamically. Follow these conditional rules:
-    1. TECHNICAL/MEDICAL/LOANWORDS (e.g., 模式识别, 胎盘, 空集): 
-       Output the English equivalent. If it's a specific domain, add a tag like "数学用语。" Keep Chinese minimal.
-    2. NUANCE & SYNONYMS (e.g., 注销, 节选): 
-       Provide a concise Chinese definition. Then, briefly explain the difference between this word and a common near-synonym (e.g., "与「取消」的区别是...").
-    3. LITERARY/RARE WORDS (e.g., 婆娑): 
-       Include pinyin with tone marks. Provide the definition and a short usage note.
-    4. POLYSEMY/CONTEXT-DEPENDENT (e.g., 注释, 清唱): 
-       Explain the specific meaning in this context (e.g., "code comment" vs "footnote"). Use English if it's faster.
-    5. PINYIN RULE: 
-       Do NOT output pinyin unless the word falls under Rule 3 (rare/literary) or is easily mispronounced.
-       
-    Return a JSON object with EXACTLY four keys:
-    "target": The extracted target word (no quotes/brackets).
-    "context": The full context sentence. Leave completely EMPTY ("") if the user input was just a single isolated word.
-    "front_hint": Optional. A short tag to put on the front of the card (e.g., "[数学]" or "[Context: logs]"). Leave empty if not needed.
-    "back": The fully formatted text for the back of the card. Use HTML <br><br> tags for line breaks instead of \n.
+    prompt = """
+
+    You are an adaptive Chinese-English dictionary and flashcard generator for an advanced C1 Mandarin learner whose native language is English.
+
+    User Input:
+
+    {raw_input}
+
+    ====================
+
+    TASK 1 — TARGET EXTRACTION
+
+    ====================
+
+    Identify ONE primary target word or phrase the user most likely wants to learn.
+
+    Priority rules:
+
+    1. If a word/expression is explicitly quoted or bracketed, use that.
+
+    2. If the input is a sentence, select the most advanced, unusual, technical, literary, or contextually important word.
+
+    3. If the input is already a standalone word/phrase, use it directly.
+
+    4. Prefer:
+
+    - uncommon vocabulary
+
+    - domain-specific terminology
+
+    - literary/chengyu-style wording
+
+    - words with nuanced usage
+
+    5. Avoid selecting:
+
+    - basic grammar
+
+    - very common function words
+
+    - names unless linguistically important
+
+    ====================
+
+    TASK 2 — CARD GENERATION
+
+    ====================
+
+    Generate the flashcard back dynamically according to the word type.
+
+    CLASSIFICATION RULES:
+
+    A. TECHNICAL / SCIENTIFIC / ACADEMIC TERMS
+
+    Examples: 空集, 胎盘, 模式识别
+
+    Format:
+
+    - English equivalent first
+
+    - Brief Chinese clarification only if needed
+
+    - Add domain tag when relevant
+
+    Example style:
+
+    “empty set。数学用语。”
+
+    B. NUANCED EVERYDAY WORDS / NEAR-SYNONYMS
+
+    Examples: 注销, 节选, 推脱
+
+    Format:
+
+    1. concise Chinese definition
+
+    2. short contrast with a common synonym
+
+    Example style:
+
+    “正式取消并使失效。<br><br>
+
+    与「取消」相比，更强调记录、资格或账户被正式作废。”
+
+    C. LITERARY / RARE / IDIOMATIC WORDS
+
+    Examples: 婆娑, 氤氲
+
+    Format:
+
+    1. pinyin with tone marks
+
+    2. concise definition
+
+    3. short usage or register note
+
+    Example style:
+
+    “pó suō<br><br>
+
+    形容盘旋起舞、枝叶摇曳等优美姿态。<br><br>
+
+    多用于文学描写。”
+
+    D. CONTEXT-DEPENDENT / POLYSEMIC WORDS
+
+    Examples: 注释, 清唱
+
+    Format:
+
+    - Explain the meaning specifically in THIS context
+
+    - English is acceptable if clearer/faster
+
+    - Mention alternate meaning only if important
+
+    Example style:
+
+    “In this context, 注释 means ‘code comments’, not footnotes or annotations in a book.”
+
+    ====================
+
+    PINYIN RULE
+
+    ====================
+
+    Do NOT include pinyin unless:
+
+    - the word is literary/rare
+
+    - pronunciation is genuinely non-obvious
+
+    - the word is commonly misread
+
+    ====================
+
+    STYLE RULES
+
+    ====================
+
+    - Be concise.
+
+    - Avoid dictionary overload.
+
+    - Prefer learner usefulness over completeness.
+
+    - Maximum length for "back": ~80 English words OR ~120 Chinese characters.
+
+    - Do not include numbered lists.
+
+    - Use natural learner-facing explanations, not academic dictionary prose.
+
+    - Use HTML <br><br> for line breaks.
+
+    - Do not use markdown.
+
+    ====================
+
+    OUTPUT FORMAT
+
+    ====================
+
+    Return EXACTLY this JSON schema:
+
+    {
+
+    "target": "...",
+
+    "context": "...",
+
+    "front_hint": "...",
+
+    "back": "..."
+
+    }
+
+    FIELD RULES:
+
+    - "target": extracted target word only, no quotes/brackets
+
+    - "context": full original sentence if applicable; otherwise ""
+
+    - "front_hint": short optional tag like "[数学]" or "[代码]"; otherwise ""
+
+    - "back": formatted flashcard back using HTML line breaks
+
     """
     
     client = OpenAI(api_key=OPENAI_API_KEY)
