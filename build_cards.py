@@ -16,11 +16,11 @@ from openai import OpenAI
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "your_api_key_here")
 
 # Set to True for a safe test run. Change to False to unleash live APIs and Anki.
-DRY_RUN = True
+DRY_RUN = False
 
 # Your Anki Setup
 ANKI_DECK = "Chinese"
-ANKI_MODEL = "Chinese Context"
+ANKI_MODEL = "Chinese Animecards"  # Updated to Animecards format
 # =================================================
 
 def anki_invoke(action, **params):
@@ -29,11 +29,11 @@ def anki_invoke(action, **params):
     try:
         response = requests.post("http://localhost:8765", json=payload).json()
         if response.get("error"):
-            print(f"AnkiConnect Error: {response['error']}")
+            print(f"❌ AnkiConnect Error: {response['error']}")
             return None
         return response.get("result")
     except Exception as e:
-        print(f"Failed to connect to Anki: {e}")
+        print(f"❌ Failed to connect to Anki: {e}")
         print("Is Anki open and AnkiConnect installed?")
         sys.exit(1)
 
@@ -42,7 +42,6 @@ def get_ai_data(target, sentence):
     print(f"🧠 Asking AI for definition of: {target}")
     
     if DRY_RUN:
-        print("   [DRY RUN] Skipping OpenAI Text API. Returning mock data.")
         return {
             "definition": f"[MOCK] 这是一个测试定义 (Definition for {target}).",
             "explanation": f"[MOCK] 这是一个测试解释 (Explanation of {target} in context)."
@@ -62,7 +61,7 @@ def get_ai_data(target, sentence):
     
     try:
         response = client.chat.completions.create(
-            model="gpt-5.4-mini",
+            model="gpt-4o-mini", # Standardizing to current stable mini model
             response_format={ "type": "json_object" },
             messages=[{"role": "user", "content": prompt}]
         )
@@ -71,7 +70,7 @@ def get_ai_data(target, sentence):
         return json.loads(content)
         
     except Exception as e:
-        print(f"AI Text Error: {e}")
+        print(f"❌ AI Text Error: {e}")
         return {"definition": "Error generating definition", "explanation": "Error"}
 
 def main():
@@ -87,13 +86,21 @@ def main():
         try:
             target, sentence = line.split('\t')
         except ValueError:
-            print(f"Skipping malformed line: {line}")
+            print(f"⚠️ Skipping malformed line: {line}")
             continue
 
-        print(f"\n--- Processing: {target} ---")
+        print(f"\n" + "="*40)
+        print(f"🎯 Processing: {target}")
+        print(f"📝 Context: {sentence}")
+        print("="*40)
         
         # 1. Get Text Data
         ai_data = get_ai_data(target, sentence)
+        
+        # ALWAYS print the AI's output so you can audit it
+        print("\n✨ AI Generated Content:")
+        print(json.dumps(ai_data, indent=2, ensure_ascii=False))
+        print("-" * 40)
         
         # 2. Build the Anki Card payload
         note = {
@@ -104,27 +111,24 @@ def main():
                 "Sentence": sentence,
                 "Definition": ai_data.get("definition", ""),
                 "Explanation": ai_data.get("explanation", ""),
-                "Audio": ""  # Kept blank to match your Anki Note Type structure
+                "Audio": "" 
             },
             "options": {
                 "allowDuplicate": False
             },
-            "tags": ["auto-mined"]
+            "tags": ["ai"]  # Updated tag
         }
 
         # 3. Push to Anki
-        print(f"📥 Pushing to Anki...")
-        
         if DRY_RUN:
-            print("   [DRY RUN] Skipping Anki injection. Here is the exact payload that would be sent:")
-            print(json.dumps(note, indent=2, ensure_ascii=False))
-            print("✅ Dry run card processed successfully!\n")
+            print("🛑 [DRY RUN] Skipping Anki injection. Process completed safely.\n")
             continue
             
-        anki_id = anki_invoke("addNote", note=note)
+        # print(f"📥 Pushing to Anki...")
+        # anki_id = anki_invoke("addNote", note=note)
         
-        if anki_id:
-            print(f"✅ Card created successfully!")
+        # if anki_id:
+        #     print(f"✅ Card created successfully! (ID: {anki_id})\n")
 
 if __name__ == "__main__":
     main()
