@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Ensure a corpus path was provided
 if [ -z "$1" ]; then
     echo "Usage: ./miner.sh /path/to/corpus"
     exit 1
@@ -9,19 +8,29 @@ fi
 CORPUS="$1"
 
 # Read from stdin line-by-line
-while read -r target anchor; do
-    # Skip empty lines or lines with only one word
+while read -r raw_target raw_anchor; do
+    # 1. Clean up hidden carriage returns (\r) and trailing whitespaces cleanly
+    target=$(echo "$raw_target" | tr -d '\r[:space:]')
+    anchor=$(echo "$raw_anchor" | tr -d '\r[:space:]')
+    
+    # Skip if either variable ends up empty
     if [ -z "$target" ] || [ -z "$anchor" ]; then
         continue
     fi
     
-    echo "✅ Match for [$target]:"
+    echo "🔍 Searching for [$target] + [$anchor]..."
     
-    # Run ripgrep. 
-    # The regex looks for: (target followed by anchor) OR (anchor followed by target)
-    # -N removes line numbers to keep the output clean
-    # -m 1 stops searching after the first match is found to save even more time
-    rg -N -m 1 "$target.*$anchor|$anchor.*$target" "$CORPUS"
+    # 2. Pipeline approach with unrestricted ripgrep (-uu)
+    # -uu forces rg to search ALL files, ignoring .gitignore and hidden status
+    # First rg finds lines containing the target, second filters for the anchor
+    # -m 1 limits the final output to 1 match
+    result=$(rg -uu -N "$target" "$CORPUS" | rg -m 1 "$anchor")
     
+    if [ -n "$result" ]; then
+        echo "✅ Match found:"
+        echo "$result"
+    else
+        echo "❌ No match found."
+    fi
     echo ""
 done
