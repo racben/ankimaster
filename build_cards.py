@@ -126,12 +126,12 @@ def main():
         if DRY_RUN:
             print("🛑 [DRY RUN] Skipping Anki injection. Process completed safely.\n")
             continue
-            
-        # print(f"📥 Pushing to Anki...")
-        # anki_id = anki_invoke("addNote", note=note)
-        
-        # if anki_id:
-        #     print(f"✅ Card created successfully! (ID: {anki_id})\n")
+
+        print(f"📥 Pushing to Anki...")
+        anki_id = anki_invoke("addNote", note=note)
+
+        if anki_id:
+            print(f"✅ Card created successfully! (ID: {anki_id})\n")
 
 if __name__ == "__main__":
     main()
