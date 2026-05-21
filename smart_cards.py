@@ -16,7 +16,7 @@ from openai import OpenAI
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "your_api_key_here")
 
 # Set to True for a safe test run. Change to False to unleash live APIs and Anki.
-DRY_RUN = True
+DRY_RUN = False
 
 # Your Anki Setup
 ANKI_DECK = "Chinese"
@@ -82,11 +82,12 @@ def get_ai_data(raw_input):
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini", 
+            model="gpt-5.4", 
             response_format={ "type": "json_object" },
             messages=[{"role": "user", "content": prompt}]
         )
-        return json.loads(response.choices.message.content)
+        # THE BUG WAS HERE: Added so Python extracts the message properly!
+        return json.loads(response.choices[0].message.content)
     except Exception as e:
         print(f"❌ AI Text Error: {e}")
         return {"target": "Error", "context": "", "front_hint": "", "back": "Error"}

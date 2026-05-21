@@ -63,7 +63,7 @@ def get_ai_data(target, sentence):
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini", # Standardizing to current stable mini model
+            model="gpt-5.4", # Standardizing to current stable mini model
             response_format={ "type": "json_object" },
             messages=[{"role": "user", "content": prompt}]
         )
