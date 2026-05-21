@@ -16,7 +16,8 @@ from openai import OpenAI
 # ================= CONFIGURATION =================
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "your_api_key_here")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Set to True for a safe test run. Change to False to unleash live APIs and Anki.
+DRY_RUN = True
 
 # Your Anki Setup
 ANKI_DECK = "Chinese"
@@ -41,6 +42,13 @@ def get_ai_data(target, sentence):
     """Call OpenAI to get the definition and explanation"""
     print(f"🧠 Asking AI for definition of: {target}")
     
+    if DRY_RUN:
+        print("   [DRY RUN] Skipping OpenAI Text API. Returning mock data.")
+        return {
+            "definition": f"[MOCK] 这是一个测试定义 (Definition for {target}).",
+            "explanation": f"[MOCK] 这是一个测试解释 (Explanation of {target} in context)."
+        }
+        
     prompt = f"""
     You are an expert Chinese linguistics assistant. 
     Target word: {target}
@@ -50,6 +58,8 @@ def get_ai_data(target, sentence):
     "definition": A concise, natural monolingual Chinese definition suitable for a C1 learner.
     "explanation": A brief monolingual Chinese explanation of how the word functions in this specific context.
     """
+    
+    client = OpenAI(api_key=OPENAI_API_KEY)
     
     try:
         response = client.chat.completions.create(
@@ -69,6 +79,12 @@ def get_audio_base64(target):
     """Call OpenAI TTS and return the audio as a base64 string"""
     print(f"🎙️ Generating native audio for: {target}")
     
+    if DRY_RUN:
+        print("   [DRY RUN] Skipping OpenAI Audio API. Returning mock audio string.")
+        return "mock_base64_audio_string_would_go_here"
+        
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    
     try:
         response = client.audio.speech.create(
             model="tts-1",
@@ -83,7 +99,7 @@ def get_audio_base64(target):
         return None
 
 def main():
-    if OPENAI_API_KEY == "your_api_key_here":
+    if not DRY_RUN and OPENAI_API_KEY == "your_api_key_here":
         print("⚠️ Please set your OPENAI_API_KEY in the script or environment.")
         sys.exit(1)
 
@@ -121,7 +137,7 @@ def main():
             "tags": ["auto-mined"]
         }
 
-        if audio_b64:
+        if audio_b64 and not DRY_RUN:
             note["audio"] = [{
                 "data": audio_b64,
                 "filename": audio_filename,
@@ -129,6 +145,13 @@ def main():
             }]
 
         print(f"📥 Pushing to Anki...")
+        
+        if DRY_RUN:
+            print("   [DRY RUN] Skipping Anki injection. Here is the exact payload that would be sent:")
+            print(json.dumps(note, indent=2, ensure_ascii=False))
+            print("✅ Dry run card processed successfully!\n")
+            continue
+            
         anki_id = anki_invoke("addNote", note=note)
         
         if anki_id:
