@@ -12,15 +12,17 @@ while (my $line = <STDIN>) {
     my ($target, $anchor) = split(/\s+/, $line);
     next unless $target && $anchor;
 
-    # Added --no-filename to force ripgrep to drop the file path
     my $cmd = "rg --no-filename -uu -N '$target' '$corpus' | rg -m 1 '$anchor'";
     my $result = `$cmd`;
     
     if ($result) {
         chomp($result);
         
-        # Strip the bracketed ID tags (e.g. [146782006]) and leading spaces
+        # 1. Strip the bracketed ID tags (e.g. [146782006]) and leading spaces
         $result =~ s/^\[.*?\]\s*//;
+        
+        # 2. Strip all Unity/HTML formatting tags (e.g. <color=#dbc291ff> or </color>)
+        $result =~ s/<[^>]+>//g;
         
         # Output as strict TSV: Target \t Clean_Sentence
         print "$target\t$result\n";
