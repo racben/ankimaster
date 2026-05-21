@@ -52,15 +52,12 @@ def get_ai_data(target, sentence):
     Target word: {target}
     Context sentence: {sentence}
     
-    Return a JSON object with exactly two keys:
-    "definition": A very concise but still clear definition of the target word. Do not use the target word's component characters in the definition itself.
-    "explanation": A micro-explanation of the context 
+    Return a JSON object with exactly three keys:
+    "pinyin": The pinyin for the target word using standard tone marks.
+    "definition": A very concise but still clear definition of the target word, written in mandarin suitable for a C1 learner. Do not use the target word's component characters in the definition itself.
+    *SPECIAL RULE*: If the word is a specialized technical term (like '空集'), prefix the definition with its domain (e.g., '数学用语。') and include the English equivalent in parentheses at the end. Do NOT do this for common words.
+    "explanation": A micro-explanation of the context, also in Mandarin
     """     
-    
-    Return a JSON object with exactly two keys:
-    "definition": A concise, natural monolingual Chinese definition suitable for a C1 learner.
-    "explanation": A brief monolingual Chinese explanation of how the word functions in this specific context.
-    """
     
     client = OpenAI(api_key=OPENAI_API_KEY)
     
@@ -112,11 +109,12 @@ def main():
             "deckName": ANKI_DECK,
             "modelName": ANKI_MODEL,
             "fields": {
-                "Target": target,
+                "Expression": target,
                 "Sentence": sentence,
-                "Definition": ai_data.get("definition", ""),
-                "Explanation": ai_data.get("explanation", ""),
-                "Audio": "" 
+                "Reading": ai_data.get("pinyin", ""),
+                "Explanation": ai_data.get("definition", ""),
+                "Notes": ai_data.get("explanation", ""),
+                "Hint": ""
             },
             "options": {
                 "allowDuplicate": False
