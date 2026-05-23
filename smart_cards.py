@@ -124,7 +124,8 @@ def get_ai_data(raw_input):
 
     1. concise Chinese definition
 
-    2. short contrast with a common synonym
+    2. short contrast with a common synonym, if and only if it is a commonly
+    confused word
 
     Example style:
 
@@ -188,7 +189,7 @@ def get_ai_data(raw_input):
 
     ====================
 
-    - Be concise.
+    - Be concise. And then be even more concise.
 
     - Avoid dictionary overload.
 
