@@ -102,7 +102,7 @@ def get_ai_explanation(user_input_line):
             ],
             temperature=0.3
         )
-        return json.loads(response.choices.message.content)
+        return json.loads(response.choices[0].message.content)
     except Exception as e:
         print(f"❌ AI Text Error: {e}")
         return {"target": "Error", "explanation": "处理失败"}
@@ -112,8 +112,6 @@ def main():
         print("⚠️ Please set your OPENAI_API_KEY in the script or environment.")
         sys.exit(1)
 
-    print("🚀 Flashcard Pipeline Ready. Paste your text line-by-line via standard input:")
-    
     for line in sys.stdin:
         line = line.strip()
         if not line:
@@ -152,11 +150,11 @@ def main():
             print(f"Back:  {note['fields']['Back']}\n")
             continue
             
-        print(f"📥 Pushing to Anki...")
-        anki_id = anki_invoke("addNote", note=note)
+        # print(f"📥 Pushing to Anki...")
+        # anki_id = anki_invoke("addNote", note=note)
         
-        if anki_id:
-            print(f"✅ Card created successfully! (ID: {anki_id})\n")
+        # if anki_id:
+        #     print(f"✅ Card created successfully! (ID: {anki_id})\n")
 
 if __name__ == "__main__":
     main()
